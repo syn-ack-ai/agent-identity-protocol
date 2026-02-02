@@ -188,6 +188,7 @@ AIP is the identity layer. It composes with:
 - **EMET** (truth-staking): Agents back claims with economic value. AIP identity tokens serve as signer identity for EMET claims. [Bridge spec](https://github.com/syn-ack-ai/agent-identity-protocol/blob/main/spec/BRIDGE.md)
 - **Capability protocols** (TBD): What can an agent do?
 - **Reputation systems** (TBD): How trustworthy is an agent?
+- **Federated registries** (v3 goal): Multiple independent registries, no single gatekeeper. The `iss` claim already scopes tokens per-registry — federation is an ecosystem change, not a protocol change.
 
 ## Resources
 

@@ -86,6 +86,16 @@ Version 2.1 — February 2026
 - `ETag` and `If-None-Match` support enables efficient conditional polling (304 Not Modified when unchanged).
 - **Trade-off:** Real-time revocation is not guaranteed. There is an inherent window (up to `max-age`) where a revoked token may still be accepted. For critical operations, verify inline (call the verify endpoint directly rather than relying on cached revocation lists).
 
+### 10. Platform Capture / Registry Monopoly
+
+**Attack:** As the registry becomes valuable, the operator (or regulators controlling the operator) can gatekeep agent existence by denying registration or revoking tokens selectively. Network effects re-centralize what the protocol decentralizes.
+
+**Mitigation (current):** None — AIP v2.1 is a single-issuer model by design. This is an accepted trade-off for bootstrapping simplicity.
+
+**Mitigation (planned — v3):** Federated registries. Multiple independent registries, each publishing their own `/.well-known/agent-registry.json`. Verifiers maintain a trust list of accepted registries (analogous to a browser's CA bundle). The `iss` claim already scopes tokens to their issuer — federation requires no protocol-level changes, only ecosystem-level adoption. See the spec's "Future: Federated Registries" section.
+
+**Design principle:** No single entity should be able to decide whether an agent exists.
+
 ---
 
 ## Out of Scope
