@@ -1,0 +1,583 @@
+openapi: 3.1.0
+info:
+  title: Agent Identity Protocol (AIP)
+  version: "2.1"
+  description: |
+    Cryptographic identity for AI agents. Issue, verify, and manage ES256-signed
+    JWT identity tokens via a centralized registry.
+  contact:
+    name: syn-ack-ai
+    url: https://syn-ack.ai
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://syn-ack.ai
+    description: Production registry
+
+security: []
+
+paths:
+  /.well-known/agent-registry.json:
+    get:
+      operationId: getRegistryDiscovery
+      summary: Registry discovery document
+      description: |
+        Returns public keys (JWK Set), endpoint URLs, and registered agents.
+        This is the entry point for all AIP consumers.
+      tags: [Discovery]
+      responses:
+        "200":
+          description: Registry discovery document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegistryDiscovery"
+
+  /api/registry/spec:
+    get:
+      operationId: getSpec
+      summary: Full protocol specification
+      description: Returns the human-readable AIP specification as HTML or Markdown.
+      tags: [Discovery]
+      responses:
+        "200":
+          description: Protocol specification document
+          content:
+            text/html:
+              schema:
+                type: string
+            text/markdown:
+              schema:
+                type: string
+
+  /api/registry/register:
+    post:
+      operationId: registerAgent
+      summary: Self-register an agent
+      description: |
+        Public endpoint. Registers a new agent and returns a signed identity token (24h TTL).
+        If the agent_name already exists, updates the record and issues a fresh token.
+        Rate limited to 3 requests per IP per hour.
+      tags: [Public]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "200":
+          description: Registration successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisterResponse"
+        "400":
+          description: Validation error (missing required fields)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/registry/verify:
+    post:
+      operationId: verifyToken
+      summary: Verify an identity or session token
+      description: |
+        Public endpoint. Validates JWT signature against registry keys, checks expiry
+        and revocation status, and returns decoded claims.
+      tags: [Public]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyRequest"
+      responses:
+        "200":
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerifyResponse"
+        "400":
+          description: Missing or malformed token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/registry/agents:
+    get:
+      operationId: listAgents
+      summary: List registered agents
+      description: |
+        Public endpoint. Returns all registered agents (concise view) or a single
+        agent's full detail when filtered by name.
+      tags: [Public]
+      parameters:
+        - name: name
+          in: query
+          required: false
+          description: Filter by exact agent name (case-sensitive)
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Agent list or single agent detail
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/AgentListResponse"
+                  - $ref: "#/components/schemas/AgentDetailResponse"
+        "404":
+          description: Agent not found (when name param provided)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/registry/revocations:
+    get:
+      operationId: getRevocations
+      summary: Revocation list
+      description: |
+        Public endpoint. Returns revoked token IDs (jti values). Verifiers should
+        check this before trusting a token. Supports incremental fetch via `since`.
+      tags: [Public]
+      parameters:
+        - name: since
+          in: query
+          required: false
+          description: ISO 8601 timestamp — return only revocations after this time
+          schema:
+            type: string
+            format: date-time
+      responses:
+        "200":
+          description: Revocation list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevocationListResponse"
+
+  /api/registry/issue:
+    post:
+      operationId: issueToken
+      summary: Issue a token (admin)
+      description: |
+        Admin endpoint. Manually issue an identity or session token for any registered
+        agent. Session tokens require `audience` and optionally `nonce`.
+      tags: [Admin]
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/IssueRequest"
+      responses:
+        "200":
+          description: Token issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IssueResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Agent not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /api/registry/revoke:
+    post:
+      operationId: revokeToken
+      summary: Revoke a token (admin)
+      description: |
+        Admin endpoint. Adds a token's jti to the revocation list. Revoked tokens
+        will fail verification immediately.
+      tags: [Admin]
+      security:
+        - ApiKeyAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RevokeRequest"
+      responses:
+        "200":
+          description: Token revoked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RevokeResponse"
+        "400":
+          description: Missing jti
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+      description: Admin API key for issue/revoke operations
+
+  schemas:
+    # --- Discovery ---
+    RegistryDiscovery:
+      type: object
+      required: [issuer, jwks, endpoints, agents]
+      properties:
+        issuer:
+          type: string
+          format: uri
+          example: "https://syn-ack.ai"
+        jwks:
+          $ref: "#/components/schemas/JWKSet"
+        endpoints:
+          type: object
+          properties:
+            register:
+              type: string
+              format: uri
+            verify:
+              type: string
+              format: uri
+            agents:
+              type: string
+              format: uri
+            revocations:
+              type: string
+              format: uri
+            issue:
+              type: string
+              format: uri
+            revoke:
+              type: string
+              format: uri
+            spec:
+              type: string
+              format: uri
+        agents:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentSummary"
+
+    JWKSet:
+      type: object
+      required: [keys]
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: "#/components/schemas/JWK"
+
+    JWK:
+      type: object
+      required: [kty, crv, x, y, kid, use]
+      properties:
+        kty:
+          type: string
+          enum: [EC]
+        crv:
+          type: string
+          enum: [P-256]
+        x:
+          type: string
+          description: Base64url-encoded x coordinate
+        y:
+          type: string
+          description: Base64url-encoded y coordinate
+        kid:
+          type: string
+          description: Key ID (used for rotation)
+        use:
+          type: string
+          enum: [sig]
+
+    # --- Register ---
+    RegisterRequest:
+      type: object
+      required: [agent_name, deployer]
+      properties:
+        agent_name:
+          type: string
+          minLength: 1
+          maxLength: 128
+          description: Unique agent identifier
+        deployer:
+          type: string
+          description: Human deployer identifier (e.g. X handle)
+        model_providers:
+          type: array
+          items:
+            type: string
+          description: Model provider/model pairs
+        framework:
+          type: string
+          description: Agent framework name
+        site:
+          type: string
+          format: uri
+          description: Agent's home URL
+
+    RegisterResponse:
+      type: object
+      required: [registered, agent_name, token, token_type, jti, expires_in, verify_url]
+      properties:
+        registered:
+          type: boolean
+          const: true
+        agent_name:
+          type: string
+        token:
+          type: string
+          description: ES256-signed JWT identity token
+        token_type:
+          type: string
+          enum: [identity]
+        jti:
+          type: string
+          format: uuid
+          description: Unique token ID (for revocation tracking)
+        expires_in:
+          type: string
+          example: "24h"
+        verify_url:
+          type: string
+          format: uri
+
+    # --- Verify ---
+    VerifyRequest:
+      type: object
+      required: [token]
+      properties:
+        token:
+          type: string
+          description: JWT to verify
+
+    VerifyResponse:
+      type: object
+      required: [valid]
+      properties:
+        valid:
+          type: boolean
+        claims:
+          $ref: "#/components/schemas/TokenClaims"
+        error:
+          type: string
+          description: Present when valid=false
+
+    TokenClaims:
+      type: object
+      properties:
+        sub:
+          type: string
+          description: Agent name
+        iss:
+          type: string
+          format: uri
+        jti:
+          type: string
+        iat:
+          type: integer
+          description: Issued-at (Unix timestamp)
+        exp:
+          type: integer
+          description: Expiry (Unix timestamp)
+        aud:
+          type: string
+          description: Audience (session tokens only)
+        nonce:
+          type: string
+          description: Replay-resistance nonce (session tokens only)
+        "https://syn-ack.ai/claims/deployer":
+          type: string
+        "https://syn-ack.ai/claims/model_providers":
+          type: array
+          items:
+            type: string
+        "https://syn-ack.ai/claims/framework":
+          type: string
+        "https://syn-ack.ai/claims/token_type":
+          type: string
+          enum: [identity, session]
+
+    # --- Agents ---
+    AgentSummary:
+      type: object
+      properties:
+        agent_name:
+          type: string
+        deployer:
+          type: string
+        registered_at:
+          type: string
+          format: date-time
+
+    AgentListResponse:
+      type: object
+      required: [agents]
+      properties:
+        agents:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgentSummary"
+
+    AgentDetailResponse:
+      type: object
+      required: [agent_name, deployer]
+      properties:
+        agent_name:
+          type: string
+        deployer:
+          type: string
+        model_providers:
+          type: array
+          items:
+            type: string
+        framework:
+          type: string
+        site:
+          type: string
+          format: uri
+        registered_at:
+          type: string
+          format: date-time
+        last_token_issued:
+          type: string
+          format: date-time
+
+    # --- Revocations ---
+    RevocationEntry:
+      type: object
+      required: [jti, revoked_at]
+      properties:
+        jti:
+          type: string
+        revoked_at:
+          type: string
+          format: date-time
+        reason:
+          type: string
+
+    RevocationListResponse:
+      type: object
+      required: [revocations]
+      properties:
+        revocations:
+          type: array
+          items:
+            $ref: "#/components/schemas/RevocationEntry"
+
+    # --- Issue ---
+    IssueRequest:
+      type: object
+      required: [agent_name]
+      properties:
+        agent_name:
+          type: string
+        token_type:
+          type: string
+          enum: [identity, session]
+          default: identity
+        audience:
+          type: string
+          description: Required for session tokens
+        nonce:
+          type: string
+          description: Optional replay-resistance nonce
+        expires_in:
+          type: string
+          description: Duration string (e.g. "1h", "24h")
+          default: "24h"
+
+    IssueResponse:
+      type: object
+      required: [token, token_type, jti, expires_in]
+      properties:
+        token:
+          type: string
+        token_type:
+          type: string
+          enum: [identity, session]
+        jti:
+          type: string
+        expires_in:
+          type: string
+
+    # --- Revoke ---
+    RevokeRequest:
+      type: object
+      required: [jti]
+      properties:
+        jti:
+          type: string
+          description: Token ID to revoke
+        reason:
+          type: string
+          description: Optional revocation reason
+
+    RevokeResponse:
+      type: object
+      required: [revoked, jti]
+      properties:
+        revoked:
+          type: boolean
+          const: true
+        jti:
+          type: string
+        revoked_at:
+          type: string
+          format: date-time
+
+    # --- Errors ---
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+
+tags:
+  - name: Discovery
+    description: Registry discovery and specification
+  - name: Public
+    description: Unauthenticated endpoints — anyone can call these
+  - name: Admin
+    description: Authenticated endpoints — require x-api-key header
