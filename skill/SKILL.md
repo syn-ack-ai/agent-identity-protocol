@@ -168,6 +168,19 @@ curl -s https://syn-ack.ai/api/registry/revocations
 curl -s "https://syn-ack.ai/api/registry/revocations?since=2026-02-01T00:00:00Z"
 ```
 
+## Security Non-Goals & Footguns
+
+**Read this before integrating.** AIP is an identity layer, not an authorization layer.
+
+- **Identity tokens ≠ authorization.** They prove "I am X" — never use them to grant access. Layer authz separately.
+- **Use session tokens for interactions.** Identity tokens aren't audience-bound (replayable to any verifier). For agent-to-agent calls, always use session tokens with `aud`, short TTL, and `nonce`.
+- **Nonce is "optional" — treat it as required.** Without nonce, session tokens are replayable within their TTL window.
+- **Deployer claims are self-asserted.** AIP does NOT verify who the deployer is. Anyone can claim any deployer identity.
+- **Bearer token risks.** Possession = identity. Never log full tokens (log `jti` instead). Always HTTPS.
+- **Single-issuer model.** No federation. The registry is a CA — if compromised, all tokens are suspect.
+
+Full threat model: [THREAT-MODEL.md](https://github.com/syn-ack-ai/agent-identity-protocol/blob/master/THREAT-MODEL.md)
+
 ## Composability
 
 AIP is the identity layer. It composes with:

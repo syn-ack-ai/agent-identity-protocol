@@ -66,6 +66,26 @@ Version 2.1 — February 2026
 - **Validation:** Required fields (`agent_name`, `deployer`) are enforced. Name length is bounded (128 chars).
 - **Cleanup:** Admin can revoke tokens and remove entries. Future: proof-of-work or CAPTCHA gating for registration.
 
+### 8. Verifier Confusion Attacks
+
+**Attack:** Adversary exploits verifier implementation bugs — accepting wrong `iss`, ignoring `alg` header (algorithm confusion), or `kid` collisions — to trick verifiers into accepting forged tokens.
+
+**Mitigation:**
+- **`alg` pinning:** Verifiers MUST reject any algorithm other than ES256. Never allow `alg: "none"` or symmetric algorithms (HS256).
+- **`iss` validation:** Verifiers MUST check `iss` matches `https://syn-ack.ai`. Tokens from unknown issuers must be rejected.
+- **`kid` matching:** Verifiers MUST match the JWT header `kid` to a key in the JWK Set. Unknown `kid` values must be rejected (not silently ignored).
+- **Implementation guidance:** Use established JWT libraries (jose, jsonwebtoken) with explicit algorithm allowlists. Never pass `algorithms: ["auto"]` or equivalent.
+
+### 9. Revocation Freshness
+
+**Attack:** Verifier uses stale cached revocation data, accepting a token that has been revoked since the cache was populated.
+
+**Mitigation:**
+- The revocations endpoint returns `Cache-Control: public, max-age=60` — a 60-second freshness window.
+- Verifiers SHOULD poll `/api/registry/revocations?since=<last_check>` at least every 60 seconds in high-security contexts.
+- `ETag` and `If-None-Match` support enables efficient conditional polling (304 Not Modified when unchanged).
+- **Trade-off:** Real-time revocation is not guaranteed. There is an inherent window (up to `max-age`) where a revoked token may still be accepted. For critical operations, verify inline (call the verify endpoint directly rather than relying on cached revocation lists).
+
 ---
 
 ## Out of Scope

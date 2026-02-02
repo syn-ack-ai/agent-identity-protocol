@@ -88,10 +88,15 @@ if [ "$SKIP_VERIFY" != "1" ]; then
     HAVE_CHECKSUMS=1
     echo "  ✓ checksums.sha256"
   else
-    echo "  ⚠ Could not fetch checksums — install will continue without verification"
+    echo ""
+    echo "ERROR: Could not fetch checksums. Aborting."
+    echo "       The checksum file is required for verified installation."
+    echo "       If you understand the risk, re-run with SKIP_VERIFY=1"
+    exit 1
   fi
 else
   echo "⚠ Checksum verification skipped (SKIP_VERIFY=1)"
+  echo "  You are installing WITHOUT integrity verification."
 fi
 echo ""
 
@@ -157,8 +162,10 @@ if [ "$HAVE_CHECKSUMS" = "1" ] && [ -n "$SHA_CMD" ]; then
   fi
   echo ""
 elif [ "$HAVE_CHECKSUMS" = "1" ] && [ -z "$SHA_CMD" ]; then
-  echo "⚠ No SHA256 tool found (shasum/sha256sum) — skipping verification"
   echo ""
+  echo "ERROR: No SHA256 tool found (shasum/sha256sum). Cannot verify file integrity."
+  echo "       Install shasum or sha256sum, or re-run with SKIP_VERIFY=1"
+  exit 1
 fi
 
 # --- Move from staging to target ---
