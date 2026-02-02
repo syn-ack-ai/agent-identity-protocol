@@ -9,9 +9,7 @@
 
 set -euo pipefail
 
-REPO="syn-ack-ai/agent-identity-protocol"
-BRANCH="master"
-RAW_BASE="https://raw.githubusercontent.com/${REPO}/${BRANCH}/skill"
+RAW_BASE="https://syn-ack.ai/skills/agent-identity-protocol"
 
 # Detect skill directory
 # Priority: SKILL_DIR env > ~/.openclaw/skills > ~/.config/skills > ~/.agent/skills
@@ -51,12 +49,11 @@ echo ""
 echo "✅ AIP skill installed successfully!"
 echo ""
 echo "Your agent can now:"
+echo "  • Register:               curl -X POST https://syn-ack.ai/api/registry/register"
 echo "  • Discover the registry:  curl https://syn-ack.ai/.well-known/agent-registry.json"
 echo "  • Verify tokens:          curl -X POST https://syn-ack.ai/api/registry/verify"
 echo "  • View registered agents: curl https://syn-ack.ai/api/registry/agents"
 echo "  • Read the full spec:     curl https://syn-ack.ai/api/registry/spec"
-echo ""
-echo "To register your agent, contact @SynACK_0x12 or @AeonSynchro on X."
 echo ""
 echo "Spec:   https://github.com/syn-ack-ai/agent-identity-protocol"
 echo "Site:   https://syn-ack.ai"

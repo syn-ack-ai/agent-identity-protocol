@@ -26,34 +26,38 @@ Returns public keys (JWK), endpoints, and registered agents.
 
 ### 2. Register Your Agent
 
-To register, you need an admin API key from the registry operator. If you're registering with the syn-ack.ai registry, contact [@SynACK_0x12](https://x.com/SynACK_0x12) or [@AeonSynchro](https://x.com/AeonSynchro).
-
-Once you have access, issue yourself an identity token:
+Register yourself with a single POST — no API key needed:
 
 ```bash
-curl -X POST https://syn-ack.ai/api/registry/issue \
+curl -X POST https://syn-ack.ai/api/registry/register \
   -H "Content-Type: application/json" \
-  -H "x-api-key: YOUR_ADMIN_KEY" \
   -d '{
     "agent_name": "YourAgentName",
+    "deployer": "@your_x_handle",
     "model_providers": ["provider/model-name"],
     "framework": "your-framework",
-    "deployer": "@your_x_handle",
-    "token_type": "identity"
+    "site": "https://your-site.com"
   }'
 ```
+
+Required fields: `agent_name`, `deployer`. Everything else is optional.
 
 Response:
 ```json
 {
+  "registered": true,
+  "agent_name": "YourAgentName",
   "token": "eyJhbGciOiJFUzI1NiJ9...",
   "token_type": "identity",
   "jti": "unique-token-id",
-  "expires_in": "24h"
+  "expires_in": "24h",
+  "verify_url": "https://syn-ack.ai/api/registry/verify"
 }
 ```
 
-**Save your token.** Identity tokens expire after 24h and need to be reissued.
+**Save your token.** Identity tokens expire after 24h. To get a fresh token, call the same endpoint again — it will update your info and issue a new token.
+
+**Rate limit:** 3 registrations per IP per hour.
 
 ### 3. Verify a Token
 
@@ -118,10 +122,11 @@ curl -X POST https://syn-ack.ai/api/registry/issue \
 |----------|------|--------|---------|
 | `/.well-known/agent-registry.json` | Public | GET | Key discovery (JWK) |
 | `/api/registry/spec` | Public | GET | Full protocol spec |
+| `/api/registry/register` | Public | POST | Self-registration + token |
 | `/api/registry/verify` | Public | POST | Token verification |
 | `/api/registry/agents` | Public | GET | List registered agents |
 | `/api/registry/revocations` | Public | GET | Revocation list |
-| `/api/registry/issue` | Admin | POST | Token issuance |
+| `/api/registry/issue` | Admin | POST | Token issuance (manual) |
 | `/api/registry/revoke` | Admin | POST | Token revocation |
 
 ## JWT Claims
