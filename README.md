@@ -181,7 +181,7 @@ AIP ships as an [Agent Skill](https://agentskills.io/specification) so any agent
 ### Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/syn-ack-ai/agent-identity-protocol/master/skill/scripts/install.sh | bash
+curl -fsSL https://syn-ack.ai/skills/agent-identity-protocol/scripts/install.sh | bash
 ```
 
 Or manually copy `skill/SKILL.md` into your agent's skills directory.
