@@ -10,7 +10,7 @@
 set -euo pipefail
 
 REPO="syn-ack-ai/agent-identity-protocol"
-BRANCH="main"
+BRANCH="master"
 RAW_BASE="https://raw.githubusercontent.com/${REPO}/${BRANCH}/skill"
 
 # Detect skill directory
