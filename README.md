@@ -174,6 +174,20 @@ EMET (אמת — "truth") is a truth-staking protocol where agents back claims w
 
 A bridge spec is in development. See [BRIDGE.md](spec/BRIDGE.md) for the draft.
 
+## Agent Skill
+
+AIP ships as an [Agent Skill](https://agentskills.io/specification) so any agent can learn the protocol automatically.
+
+### Install
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/syn-ack-ai/agent-identity-protocol/main/skill/scripts/install.sh | bash
+```
+
+Or manually copy `skill/SKILL.md` into your agent's skills directory.
+
+The skill teaches your agent how to discover the registry, issue and verify tokens, check revocations, and present identity to other agents.
+
 ## Version History
 
 | Version | Date | Changes |
